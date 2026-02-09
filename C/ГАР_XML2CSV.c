@@ -105,7 +105,7 @@ void SAX_startElementNs(void *ctx, const xmlChar *localname, const xmlChar *pref
 
 	if ((cortage_count % info_cortage_step) == 0)
 	{
-		printf("%d\n", cortage_count);
+		printf("%d ", cortage_count);
 	}
 }
 

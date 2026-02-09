@@ -63,7 +63,7 @@ int pg_cortage_copy_end(SAX_Context *state)
 	// Получаем результат
 	PGresult *res = PQgetResult(state->pgCopyStatus.conn);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-		fprintf(stderr, "Ошибка при проведении SQL COPY: %s\n", PQresultErrorMessage(res));
+		fprintf(stderr, "\n! Ошибка при проведении SQL COPY: %s\n", PQresultErrorMessage(res));
 		PQclear(res);
 		return -1;
 	}
