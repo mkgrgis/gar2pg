@@ -4,9 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
   push:
-    branches:
-      - master
-      - main
+
 jobs:
   test:
     env:
@@ -16,8 +14,6 @@ jobs:
       PGPORT : '5432'
       PGHOST : '127.0.0.1'
       test_schema : 'data'
-    strategy:
-      fail-fast: false
 
     name: Разворачивание PostgreSQL, загрузка метаданных и данных ГАР
     runs-on: ubuntu-latest
@@ -26,7 +22,7 @@ jobs:
 
       - name: tar
         run: |
-          tar zcvf gos_adres_reestr_2_postgresql.tar.gz ./*
+          tar zcvf gar2pg.tar.gz ./*
           chmod +x ./*.sh -v
 
       - name: Установка PostgreSQL, библиотек для компиляции утилиты, местных стандартов вывода
@@ -37,7 +33,7 @@ jobs:
           sudo systemctl restart postgresql;
 
       - name: Подготовка пользователя и БД PostgreSQL
-        run: bash GitHubActions/db_init.sh '${{ env.PGDATABASE }}' '${{ env.PGDATABASE }}' '${{ env.PGPASSWORD }}';
+        run: bash GitHubActions/db_init.sh '${{ env.PGDATABASE }}' '${{ env.PGUSER }}' '${{ env.PGPASSWORD }}';
 
       - name: Загрузка метаданных ГАР XSD
         run: bash GitHubActions/db_use.sh https://web.archive.org/web/20250921151758/https://fias.nalog.ru/docs/gar_schemas.zip ${{ env.test_schema }};
@@ -45,7 +41,7 @@ jobs:
       - name: Компиляция утилиты
         run: (cd C; make all;)
 
-      - name: Перенос данных по словарям (xsd <-> PostgreSQL)
+      - name: Загрузка данных по словарям xsd <-> PostgreSQL, основной тест
         run: bash GitHubActions/db_test.sh ${{ env.test_schema }}
 
       - name: Скачивание артефактов провала для анализа
