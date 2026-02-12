@@ -20,7 +20,7 @@ int pg_cortage_copy_begin(PGconn *conn, const char *table_name)
 		if (written >= 0 && written < l )
 		{
 			append_log(log_file_addr, buffer);
-			fprintf(stderr, buffer);
+			fprintf(stderr, "%s", buffer);
 		}
 		else
 		{
