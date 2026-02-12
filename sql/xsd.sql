@@ -217,7 +217,8 @@ select xsd_id,
        loading_session_id,
        tstamp,
        xsd_filename,
-       root_node,       
+       root_node,
+       row_number() over (partition by xsd_id) "№",
        ((xpath( '/xs:attribute/@name', xsda, xsdns))[1])::text transport_attribute,
        ((xpath( '/xs:attribute/xs:annotation/xs:documentation/text()', xsda, xsdns))[1])::text "name",
        ((xpath( '/xs:attribute/@use', xsda, xsdns))[1])::text "not null",
@@ -232,13 +233,14 @@ select xsd_id,
 
 -- Отдельные атрибуты
 -- Собирается нормализованное представление
-create or replace view xsd.transport_attributes as
+create view xsd.transport_attributes as
 with attr as (
 select xsd_id,
        loading_session_id,
        tstamp,
        xsd_filename,
-       root_node,       
+       root_node,
+       "№",
        transport_attribute,
        "name" "name0",
        coalesce(type1, type2) xsd_dt,
@@ -274,8 +276,9 @@ select xsd_id,
        loading_session_id,
        tstamp,
        xsd_filename,
+       xml_file_prefix,
        root_node,
-       row_number() over (partition by xsd_id, xml_file_prefix) "№",
+       "№",
        transport_attribute,
        case when "name0" = 'Дополнительный номер дома 1' and transport_attribute = 'ADDNUM2' then 'Дополнительный № дома 2'
        else 
@@ -317,14 +320,13 @@ select xsd_id,
        "length",
        xsda,
        "name0",
-       table_name,
-       xml_file_prefix
+       table_name
   from attr;
 
 -- DDL команды для отдельных строк
 create view xsd.row_ddl as
-
 select loading_session_id,
+       xsd_id,
        root_node,
        xsd_filename,
        xml_file_prefix,
@@ -333,12 +335,12 @@ select loading_session_id,
        '    "' || column_name || '" '
        		|| coalesce(type, 'varchar') 
        		|| case when "not null" then ' not null' else '' end 
-       		|| case when "№" = 1 and (column_name ~ '^Ключ' or column_name ~ '^Код') then ' primary key' else '' end
+       		|| case when "№" = 1 and (column_name = 'Ключ' and transport_attribute = 'ID' or column_name ~ '^Код') then ' primary key' else '' end
        		"ddl"
 from xsd.transport_attributes;
 
 -- DDL команды для таблиц целиком
-create view xsd.table_ddl as 
+create or replace view xsd.table_ddl as 
 with att as ( 
 select root_node, xsd_filename, xml_file_prefix, array_to_string(array_agg("ddl"), ',
 ') "ddl"
@@ -347,7 +349,7 @@ select root_node, xsd_filename, xml_file_prefix, array_to_string(array_agg("ddl"
  )
  select xsd_filename, xsd_id,
         '-- ' || xsd_filename || '
-CREATE TABLE "' || current_setting('ГАР.схема', false) || '"."' || table_name || '" (
+CREATE TABLE "' || coalesce(current_setting('ГАР.схема', true), 'public') || '"."' || table_name || '" (
 ' || ddl || '
 );' ddl
    from att 
