@@ -43,11 +43,12 @@ COMMENT ON COLUMN xsd.pg_tables.xsd_descr_singular IS 'Описание смыс
 -- Сотнесение колонок таблиц в выбранной схеме с эталонной структурой ГАР
 -- Создание таблицы переноса значений XML атрибутов в колонки
 create table xsd.pg_columns as
+
 with c as (
 select *
   from information_schema."columns" c
  where c.table_catalog = 'Государственный адресный реестр'
-   and c.table_schema = current_setting('ГАР.схема', false)
+   and c.table_schema = coalesce(current_setting('ГАР.схема', true), 'public')
    )
 select table_catalog,
        table_schema,
