@@ -33,16 +33,16 @@ jobs:
           sudo systemctl restart postgresql;
 
       - name: Подготовка пользователя и БД PostgreSQL
-        run: bash GitHubActions/db_init.sh '${{ env.PGDATABASE }}' '${{ env.PGUSER }}' '${{ env.PGPASSWORD }}';
+        run: bash test/db_init.sh '${{ env.PGDATABASE }}' '${{ env.PGUSER }}' '${{ env.PGPASSWORD }}';
 
       - name: Загрузка метаданных ГАР XSD
-        run: bash GitHubActions/db_use.sh https://web.archive.org/web/20250921151758/https://fias.nalog.ru/docs/gar_schemas.zip ${{ env.test_schema }};
+        run: bash test/db_prepare.sh https://web.archive.org/web/20250921151758/https://fias.nalog.ru/docs/gar_schemas.zip ${{ env.test_schema }};
 
       - name: Компиляция утилиты
         run: (cd C; make all;)
 
       - name: Загрузка данных по словарям xsd <-> PostgreSQL, основной тест
-        run: bash GitHubActions/db_test.sh ${{ env.test_schema }}
+        run: bash test/db_test.sh ${{ env.test_schema }}
 
       - name: Скачивание артефактов провала для анализа
         if: failure()
