@@ -100,3 +100,45 @@ char* url_encode(const char* str)
 	*p = '\0'; // Null-terminate the string
 	return encoded; // Return the newly allocated string
 }
+
+void printWithSeparator(long long num, char separator)
+{
+	char buffer[50];
+	int i = 0, count = 0;
+
+	// Handle negative numbers
+	if (num < 0) {
+		putchar('-');
+		num = -num;
+	}
+
+	// Convert number to string
+	sprintf(buffer, "%lld", num);
+	int length = strlen(buffer);
+
+	// Print each digit and add separator as needed
+	for (i = 0; i < length; i++) {
+		putchar(buffer[i]);
+		count++;
+		// Add separator after every three digits except at the end
+		if ((length - 1 - i) % 3 == 0 && i != length - 1) {
+			putchar(separator);
+		}
+	}
+}
+
+void append_log (char * addr, char * message)
+{
+	if (addr == NULL)
+	{
+		return;
+	}
+	// Open the file in append mode ("a")
+	FILE *file = fopen(addr, "a");
+	if (file == NULL)
+	{
+		return;
+	}
+	fputs(message, file);
+	fclose(file);
+}

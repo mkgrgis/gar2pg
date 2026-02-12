@@ -4,6 +4,7 @@
 #include <libxml/SAX.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/stat.h>
 
 #include "common.h"
 
@@ -20,8 +21,15 @@ static void SAX_OnCharacters(void *ctx, const xmlChar *ch, int len);
 
 static char**	selected_attributes = NULL;
 static char*	xpath_prefix = NULL;
-static int		cortage_count = 0;
+// Счётчик числа обработанных кортежей
+int				cortage_count = 0;
+// Байтовый счётчик переноса в БД
+int				pg_position = 0;
 static int		info_cortage_step = 0;
+char * xml_file_address = NULL;
+
+char*	log_file_addr = NULL;
+
 static char		csv_row[PG_COPY_BUFFER_SIZE];
 
 void SAX_startElementNs(void *ctx, const xmlChar *localname, const xmlChar *prefix, const xmlChar *URI, int nb_namespaces, const xmlChar **namespaces, int nb_attributes, int nb_defaulted, const xmlChar **attributes)
@@ -32,6 +40,7 @@ void SAX_startElementNs(void *ctx, const xmlChar *localname, const xmlChar *pref
 	UNUSED(nb_namespaces);
 	UNUSED(nb_defaulted);
 	SAX_Context *context = (SAX_Context *)ctx;
+	int pg_data_len = 0;
 
 	// Build the current path
 	if (context->currentPath ) {
@@ -72,6 +81,9 @@ void SAX_startElementNs(void *ctx, const xmlChar *localname, const xmlChar *pref
 		AttrMap * m = (AttrMap*) malloc(sizeof(AttrMap));
 		m->name = a_localname;
 		m->value = a_value;
+		context->xml_position += strlen((const char *)m->name);
+		context->xml_position += strlen((const char *)m->value);
+		context->xml_position += 5; // "name"="value"_
 		am[i] = m;
 	}
 
@@ -96,7 +108,9 @@ void SAX_startElementNs(void *ctx, const xmlChar *localname, const xmlChar *pref
 			}
 		}
 	}
-	sprintf(csv_row + strlen(csv_row), "\n");
+	pg_data_len = strlen(csv_row);
+	sprintf(csv_row + pg_data_len, "\n");
+	pg_position += pg_data_len;
 
 	pg_cortage_copy_send_row(context, csv_row);
 //	printf (csv_row);
@@ -105,7 +119,13 @@ void SAX_startElementNs(void *ctx, const xmlChar *localname, const xmlChar *pref
 
 	if ((cortage_count % info_cortage_step) == 0)
 	{
-		printf("%d ", cortage_count);
+		printf("кортежей ");
+		printWithSeparator( (long long)cortage_count, '\'' );
+		printf(", позиции: xml ≈ ");
+		printWithSeparator( (long long)context->xml_position, '\'' );
+		printf("; pg ");
+		printWithSeparator( (long long)pg_position, '\'' );
+		printf("\n");
 	}
 }
 
@@ -130,17 +150,17 @@ void SAX_endElementNs(void *ctx, const xmlChar *localname, const xmlChar *prefix
 
 static void SAX_OnCharacters(void *ctx, const xmlChar *ch, int len)
 {
-	UNUSED(ctx);
 	UNUSED(ch);
-	UNUSED(len);
+	SAX_Context *context = (SAX_Context *)ctx;
+	context->xml_position += len;
 }
 
 static xmlSAXHandler saxHandler = {
-    .initialized = XML_SAX2_MAGIC, /* signal SAX2 */
-    .startElementNs = SAX_startElementNs,
-    .endElementNs = SAX_endElementNs,
-    .characters = SAX_OnCharacters,
-    /* other callbacks left NULL */
+	.initialized = XML_SAX2_MAGIC, /* signal SAX2 */
+	.startElementNs = SAX_startElementNs,
+	.endElementNs = SAX_endElementNs,
+	.characters = SAX_OnCharacters,
+	/* other callbacks left NULL */
 };
 
 /* SAX end */
@@ -153,6 +173,7 @@ void showhelp(char * name) {
 	printf("\t-t\tТаблица PostgreSQL, получающая загружаемые из XML файла данные\n");
 	printf("\t-a\tСписок свойств линейного узла XML, помещаемых в таблицу.\n\t\t\tУпорядочивается в порядке полей таблицы, должен совпась с ними по количеству\n");
 	printf("\t-i\tШаг печати информации о занесении кортежей, каждый кортеж по умолчанию\n");
+	printf("\t-l\tФайл для записи сообщений об ошибках SQL (лог ошибок поставляемых данных)\n");
 	printf("\t-h\tПоказать эту справку\n\n");
 	printf("\t-h\tПример:\n%s \\ \n -a 'ID,OBJECTID,OBJECTGUID,CHANGEID,HOUSENUM,ADDNUM2,ADDNUM1,HOUSETYPE,ADDTYPE1,ADDTYPE2,OPERTYPEID,PREVID,NEXTID,UPDATEDATE,STARTDATE,ENDDATE,ISACTUAL,ISACTIVE' \\ \n -t '\"public\".\"№ домов улиц населённых пунктов\"' \\\n -p 'HOUSES/HOUSE' \\\n -x 'Государственный адресный реестр/XML за 2026-01-29/AS_HOUSES_20251215_55004bba-fe23-4aeb-8eba-ebc086b8a94c.XML'", name);
 	printf("\n");
@@ -160,11 +181,11 @@ void showhelp(char * name) {
 
 int main(int argc, char *argv[])
 {
-	char * xml_file_address = NULL;
 	char * pg_table_name = NULL;
 	char c;
+	struct stat xmlStat;
 
-	while ((c = getopt (argc, argv, "ha:p:x:t:i:")) != -1)
+	while ((c = getopt (argc, argv, "ha:p:x:t:i:l:")) != -1)
 	{
 		switch (c) {
 			case 'h':
@@ -184,6 +205,9 @@ int main(int argc, char *argv[])
 				break;
 			case 'i':
 				info_cortage_step = atoi(optarg);
+				break;
+			case 'l':
+				log_file_addr = optarg;
 				break;
 			default:
 				break;
@@ -232,13 +256,17 @@ int main(int argc, char *argv[])
 	context.pgCopyStatus.conn = conn;
 	context.pgCopyStatus.offset = 0;
 	context.currentPath = NULL;
+	context.xml_position = 0;
 
 	FILE *f = fopen(xml_file_address, "r");
-	if (!f) {
+	if (!f || (stat(xml_file_address, &xmlStat) < 0) ) {
 		fprintf(stderr,"Ошибка открытия указанного файла.\n");
 		exit(1);
 	}
 	fclose(f);
+
+	if (info_cortage_step == 0)
+		info_cortage_step = (xmlStat.st_size > 100 * 1024 * 1024) ? 100000 : 20000;
 
 	// Начало транзакции
 	PGresult *res = PQexec(conn, "BEGIN");
@@ -258,10 +286,10 @@ int main(int argc, char *argv[])
 	clock_gettime(CLOCK_REALTIME, &ts_before);
 
 	if (xmlSAXUserParseFile(&saxHandler, &context, xml_file_address) != 0) {
-        fprintf(stderr,"Ошибка разбора xml.\n");
-        xmlCleanupParser();
-        return 2;
-    }
+		fprintf(stderr,"Ошибка разбора xml.\n");
+		xmlCleanupParser();
+		return 2;
+	}
 
 	// Опустошение структур разбора файла XML
 	free(context.currentPath);
@@ -284,5 +312,13 @@ int main(int argc, char *argv[])
 	clock_gettime(CLOCK_REALTIME, &ts_after);
 	timespec_diff(&ts_after, &ts_before, &ts_diff);
 	fprintf(stderr,"Всего завершено за: %lf секунд\n%d кортежей\n", ts_diff.tv_sec + (ts_diff.tv_nsec/1000000000.0), cortage_count);
+		printf("Позиции: xml ≈ ");
+		printWithSeparator( (long long)context.xml_position, '\'' );
+		printf(" из ");
+		printWithSeparator( (long long)xmlStat.st_size, '\'' );
+		printf("; pg ");
+
+		printWithSeparator( (long long)pg_position, '\'' );
+		printf("\n");
 	return EXIT_SUCCESS;
 }

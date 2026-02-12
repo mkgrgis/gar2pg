@@ -5,8 +5,6 @@
 
 #include "common.h"
 
-#define MAX_URL_LEN 4006
-
 // Инициализация COPY-сессии
 int pg_cortage_copy_begin(PGconn *conn, const char *table_name)
 {
@@ -15,7 +13,19 @@ int pg_cortage_copy_begin(PGconn *conn, const char *table_name)
 
 	PGresult *res = PQexec(conn, query);
 	if (PQresultStatus(res) != PGRES_COPY_IN) {
-		fprintf(stderr, "COPY failed: %s\n", PQerrorMessage(conn));
+		char buffer[4096];
+		int l = sizeof(buffer);
+		const char * errm = PQerrorMessage(conn);
+		int written = snprintf(buffer, l, "SQL команда COPY провалена: %s\n  кортежей %d, pg %d %s", errm, cortage_count, pg_position, "\0");
+		if (written >= 0 && written < l )
+		{
+			append_log(log_file_addr, buffer);
+			fprintf(stderr, buffer);
+		}
+		else
+		{
+			fprintf(stderr, "Сверхдлинная ошибка SQL, лог парализован");
+		}
 		PQclear(res);
 		return -1;
 	}
@@ -62,8 +72,21 @@ int pg_cortage_copy_end(SAX_Context *state)
 
 	// Получаем результат
 	PGresult *res = PQgetResult(state->pgCopyStatus.conn);
-	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-		fprintf(stderr, "\n! Ошибка при проведении SQL COPY: %s\n", PQresultErrorMessage(res));
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		char buffer[4096];
+		int l = sizeof(buffer);
+		const char * errm = PQresultErrorMessage(res);
+		int written = snprintf(buffer, l, "! Файл: %s\n  Ошибка при проведении SQL COPY: %sДо ошибки обработано %d кортежей, в БД передано %d байт \n%s",  xml_file_address, errm, cortage_count, pg_position, "\0");
+		if (written >= 0 && written < l )
+		{
+			append_log(log_file_addr, buffer);
+			fprintf(stderr, "\n%s", buffer);
+		}
+		else
+		{
+			fprintf(stderr, "Сверхдлинная ошибка SQL, лог парализован");
+		}
 		PQclear(res);
 		return -1;
 	}

@@ -17,6 +17,9 @@ void timespec_diff(struct timespec *a, struct timespec *b, struct timespec *resu
 char** str_split(char* a_str, const char a_delim);
 char* url_encode(const char* str);
 
+void printWithSeparator(long long num, char separator);
+void append_log (char * addr, char * message);
+
 // Работа с СУБД pg_in.c
 #define PG_COPY_BUFFER_SIZE 65536  // 64KB буфер
 typedef struct {
@@ -26,10 +29,17 @@ typedef struct {
         size_t offset;
     } pgCopyStatus;
     char *currentPath;
+    // Байтовый счётчик потока ввода
+    size_t xml_position;
 } SAX_Context;
 
 int pg_cortage_copy_begin(PGconn *conn, const char *table_name);
 int pg_cortage_copy_send_row(SAX_Context *state, const char *csv_row);
 int pg_cortage_copy_end(SAX_Context *state);
+
+extern int cortage_count;
+extern int pg_position;
+extern char*	log_file_addr;
+extern char * xml_file_address;
 
 #endif // XML2CSV_ГАР
