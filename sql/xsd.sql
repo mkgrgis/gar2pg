@@ -321,7 +321,8 @@ select xsd_id,
        xsda,
        "name0",
        table_name
-  from attr;
+  from attr
+ order by xsd_id, xml_file_prefix, "№";
 
 -- DDL команды для отдельных строк
 create view xsd.row_ddl as
@@ -335,7 +336,7 @@ select loading_session_id,
        '    "' || column_name || '" '
        		|| coalesce(type, 'varchar') 
        		|| case when "not null" then ' not null' else '' end 
-       		|| case when "№" = 1 and (column_name = 'Ключ' and transport_attribute = 'ID' or column_name ~ '^Код') then ' primary key' else '' end
+       		|| case when "№" = 1 and (column_name = 'Ключ' and "not null" and transport_attribute = 'ID' or column_name ~ '^Код') then ' primary key' else '' end
        		"ddl"
 from xsd.transport_attributes;
 
