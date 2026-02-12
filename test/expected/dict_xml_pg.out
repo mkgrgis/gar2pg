@@ -48,7 +48,7 @@ with c as (
 select *
   from information_schema."columns" c
  where c.table_catalog = 'Государственный адресный реестр'
-   and c.table_schema = current_setting('ГАР.схема', false)
+   and c.table_schema = coalesce(current_setting('ГАР.схема', true), 'public')
    )
 select table_catalog,
        table_schema,
