@@ -323,7 +323,18 @@ select xsd_id,
 
 -- DDL команды для отдельных строк
 create view xsd.row_ddl as
-select loading_session_id, root_node, xsd_filename, xml_file_prefix, "№", xsda, '    "' || column_name || '" ' || coalesce(type, 'varchar') || ' ' || case when "not null" then 'not null' else '' end  "ddl"
+
+select loading_session_id,
+       root_node,
+       xsd_filename,
+       xml_file_prefix,
+       "№",
+       xsda,
+       '    "' || column_name || '" '
+       		|| coalesce(type, 'varchar') 
+       		|| case when "not null" then ' not null' else '' end 
+       		|| case when "№" = 1 and (column_name ~ '^Ключ' or column_name ~ '^Код') then ' primary key' else '' end
+       		"ddl"
 from xsd.transport_attributes;
 
 -- DDL команды для таблиц целиком
