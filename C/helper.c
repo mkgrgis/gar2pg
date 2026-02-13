@@ -155,7 +155,6 @@ bool contains_character(const char *str, char ch)
 	return false;  // Character not found
 }
 
-
 char* doubleQuotes(const char* input)
 {
 	// Calculate the size of the new string
