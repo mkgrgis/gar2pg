@@ -43,7 +43,6 @@ COMMENT ON COLUMN xsd.pg_tables.xsd_descr_singular IS 'Описание смыс
 -- Сотнесение колонок таблиц в выбранной схеме с эталонной структурой ГАР
 -- Создание таблицы переноса значений XML атрибутов в колонки
 create table xsd.pg_columns as
-
 with c as (
 select *
   from information_schema."columns" c
@@ -55,9 +54,7 @@ select table_catalog,
        table_name,
        column_name,
        ordinal_position,
-       transport_attribute,
-       xml_file_prefix,
-       xsd_filename
+       transport_attribute       
   from c
   full join xsd.transport_attributes ta
  using (table_name, column_name);
@@ -77,13 +74,12 @@ COMMENT ON COLUMN xsd.pg_columns.table_name IS 'Таблица где разме
 COMMENT ON COLUMN xsd.pg_columns.column_name IS 'Название колонки';
 COMMENT ON COLUMN xsd.pg_columns.ordinal_position IS 'Порядковый № колонки в рамках таблицы';
 COMMENT ON COLUMN xsd.pg_columns.transport_attribute IS 'Название атрибута типового узла файла XML ГАР, из которого заполянется колонка';
-COMMENT ON COLUMN xsd.pg_columns.xml_file_prefix IS 'Транспортный префикс XML файла ГАР';
-COMMENT ON COLUMN xsd.pg_columns.xsd_filename IS 'Название XSD файла, описывающего XML файл ГАР';
 
 -- Параметры вызова программы
 -- формируются динамически из действующих словарей соответствия
 -- здесь приводится версия по умолчанию без исправлений
 create view xsd.program_call_parameters as
+
 with col_ord as (
 select table_catalog, table_schema, table_name,
        transport_attribute, root_node, singular_transport_node, pt.xml_file_prefix
