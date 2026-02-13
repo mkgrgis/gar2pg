@@ -59,8 +59,6 @@ select table_catalog,
   full join xsd.transport_attributes ta
  using (table_name, column_name);
 
--- XML атрибуты уникальны, хотя могут быть недозаполнены
-ALTER TABLE xsd.pg_columns ADD CONSTRAINT pg_columns_xml_un UNIQUE (transport_attribute,xml_file_prefix);
 -- Объект БД уникален
 ALTER TABLE xsd.pg_columns ADD CONSTRAINT pg_columns_db_un UNIQUE (table_catalog,table_schema,table_name,column_name);
 -- Колонки относятся к уже занесённым таблицам
