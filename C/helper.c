@@ -142,3 +142,50 @@ void append_log (char * addr, char * message)
 	fputs(message, file);
 	fclose(file);
 }
+
+bool contains_character(const char *str, char ch)
+{
+	// Iterate through each character in the string
+	while (*str) {
+		if (*str == ch) {
+			return true;  // Character found
+		}
+		str++;  // Move to the next character
+	}
+	return false;  // Character not found
+}
+
+
+char* doubleQuotes(const char* input)
+{
+	// Calculate the size of the new string
+	int length = strlen(input);
+	int newSize = 0;
+
+	// Count the number of double quotes
+	for (int i = 0; i < length; i++) {
+		if (input[i] == '"') {
+			newSize++;  // We will need an extra character for each double quote
+		}
+		newSize++;  // Count the current character
+	}
+
+	// Allocate memory for the new string
+	char* output = (char*)malloc(newSize + 1);  // +1 for the null terminator
+	if (output == NULL) {
+		return NULL;  // Return NULL if memory allocation fails
+	}
+
+	int j = 0;  // Index for output
+	for (int i = 0; i < length; i++) {
+		if (input[i] == '"') {
+			output[j++] = '"';  // Write first quote
+			output[j++] = '"';  // Write the second quote
+		} else {
+			output[j++] = input[i];  // Copy the character as is
+		}
+	}
+	output[j] = '\0';  // Null-terminate the new string
+
+	return output;  // Return the new string
+}

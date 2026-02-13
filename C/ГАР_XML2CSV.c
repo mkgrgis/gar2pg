@@ -55,7 +55,7 @@ void SAX_startElementNs(void *ctx, const xmlChar *localname, const xmlChar *pref
 	// fprintf(stderr, " el->: %s\n", context->currentPath);
 
 	if (strcmp(context->currentPath, xpath_prefix)) {
-		fprintf(stderr, "Нелинейный элемент: %s\n", context->currentPath);
+		fprintf(stderr, "Нетиповой элемент: %s\n", context->currentPath);
 		return;
 	}
 	cortage_count++;
@@ -104,7 +104,16 @@ void SAX_startElementNs(void *ctx, const xmlChar *localname, const xmlChar *pref
 			AttrMap * m = am[i];
 			if (strcmp(sa, (const char *)m->name) == 0)
 			{
-				sprintf(csv_row + strlen(csv_row), "\"%s\"", m->value);
+				if (contains_character((char *)m->value, '"'))
+				{
+					char* res = doubleQuotes((const char* )m->value);
+					sprintf(csv_row + strlen(csv_row), "\"%s\"", res);
+					free (res);
+				}
+				else
+				{
+					sprintf(csv_row + strlen(csv_row), "\"%s\"", m->value);
+				}
 			}
 		}
 	}
@@ -113,7 +122,6 @@ void SAX_startElementNs(void *ctx, const xmlChar *localname, const xmlChar *pref
 	pg_position += pg_data_len;
 
 	pg_cortage_copy_send_row(context, csv_row);
-//	printf (csv_row);
 
 	AttrMap_free (am, nb_attributes);
 
@@ -266,7 +274,7 @@ int main(int argc, char *argv[])
 	fclose(f);
 
 	if (info_cortage_step == 0)
-		info_cortage_step = (xmlStat.st_size > 100 * 1024 * 1024) ? 100000 : 20000;
+		info_cortage_step = (xmlStat.st_size > (100 * 1024 * 1024)) ? 100000 : 20000;
 
 	// Начало транзакции
 	PGresult *res = PQexec(conn, "BEGIN");

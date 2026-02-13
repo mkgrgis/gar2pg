@@ -3,6 +3,7 @@
 
 #include <libpq-fe.h>
 #include <libxml/parser.h>
+#include <stdbool.h>
 
 // Разные дополнительные функции helper.c
 typedef struct {
@@ -19,6 +20,9 @@ char* url_encode(const char* str);
 
 void printWithSeparator(long long num, char separator);
 void append_log (char * addr, char * message);
+
+bool contains_character(const char *str, char ch);
+char* doubleQuotes(const char* input);
 
 // Работа с СУБД pg_in.c
 #define PG_COPY_BUFFER_SIZE 65536  // 64KB буфер
