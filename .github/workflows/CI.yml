@@ -1,0 +1,54 @@
+name: ГАР2pg
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+
+jobs:
+  test:
+    env:
+      PGPASSWORD : '1234567890'
+      PGDATABASE : 'Государственный адресный реестр'
+      PGUSER : 'Государственный адресный реестр'
+      PGPORT : '5432'
+      PGHOST : '127.0.0.1'
+      test_schema : 'data'
+
+    name: Разворачивание PostgreSQL, загрузка метаданных и данных ГАР
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: tar
+        run: |
+          tar zcvf gar2pg.tar.gz ./*
+          chmod +x ./*.sh -v
+
+      - name: Установка PostgreSQL, библиотек для компиляции утилиты, местных стандартов вывода
+        run: |
+          sudo apt install -y apt-transport-https
+          sudo apt install postgresql postgresql-contrib libxml2-dev libpq-dev -y
+          # sudo apt install language-pack-ru-base language-pack-ru -y && sudo locale-gen ru_RU
+          sudo systemctl restart postgresql;
+
+      - name: Подготовка пользователя и БД PostgreSQL
+        run: bash test/db_init.sh '${{ env.PGDATABASE }}' '${{ env.PGUSER }}' '${{ env.PGPASSWORD }}';
+
+      - name: Загрузка метаданных ГАР XSD
+        run: bash test/db_prepare.sh https://web.archive.org/web/20250921151758/https://fias.nalog.ru/docs/gar_schemas.zip ${{ env.test_schema }};
+
+      - name: Компиляция утилиты
+        run: (cd C; make all;)
+
+      - name: Загрузка данных по словарям xsd <-> PostgreSQL, основной тест
+        run: bash test/db_test.sh ${{ env.test_schema }}
+
+      - name: Скачивание артефактов провала для анализа
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Diff_schema_${{ env.test_schema }}
+          path: |
+            test/
+          retention-days: 4

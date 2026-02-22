@@ -1,0 +1,14 @@
+select * from "data"."Адресообразующие элементы";
+select * from "data"."Операции переподчинения";
+select * from "data"."Машино-места";
+select * from "data"."Параметры машиномест";
+select * from "data"."Комнаты";
+select * from "data"."Параметры помещений";
+select * from "data"."Добавочные параметры домов";
+select * from "data"."Типы адресных объектов";
+select * from "data"."Типы помещений";
+select * from "data"."Типы домов";
+select * from "data"."Уровни адресных объектов";
+select * from "data"."Статусы действия";
+select * from "data"."Типы параметров";
+select * from "data"."Типы комнат";
