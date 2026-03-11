@@ -22,7 +22,7 @@ static void SAX_OnCharacters(void *ctx, const xmlChar *ch, int len);
 static char**	selected_attributes = NULL;
 static char*	xpath_prefix = NULL;
 static char*	region_code = NULL;
-static int		region_attribute_i = -1;
+static int		region_attribute_ordinal = 0;
 // Счётчик числа обработанных кортежей
 size_t			cortage_count = 0;
 // Байтовый счётчик переноса в БД
@@ -89,20 +89,29 @@ void SAX_startElementNs(void *ctx, const xmlChar *localname, const xmlChar *pref
 		am[i] = m;
 	}
 
+	bool region_mode = (region_attribute_ordinal && region_code != NULL);
 	int att_i = 0;
+	int copy_el_i = 0;
+
 	csv_row[0] = '\0';
 	while (selected_attributes[att_i] != NULL)
 	{
 		const char * sa = selected_attributes[att_i];
-		if (att_i != region_attribute_i || region_code == NULL)
-			att_i++;
+
+		att_i++;
 		// Разделитель печатается даже для не заполняемых атрибутов
 		if (att_i > 1)
 			sprintf(csv_row + strlen(csv_row), "\t");
 		// Если атрибут таблицы ничем не заполняется, в XML атрибуте ничего не указано, то просто пропустим его
 		if (sa[0] == '\0')
 			continue;
-		if (att_i != region_attribute_i || region_code == NULL)
+
+		if (region_mode && copy_el_i == (region_attribute_ordinal - 1))
+		{
+			sprintf(csv_row + strlen(csv_row), "\"%s\"", region_code);
+			copy_el_i++;
+		}
+		else
 		{
 			// Сравним названия нужного атрибута XML поставляющего данные в таблицу со всеми ранее запасёнными
 			for (int i = 0; i < nb_attributes; i++)
@@ -110,6 +119,7 @@ void SAX_startElementNs(void *ctx, const xmlChar *localname, const xmlChar *pref
 				AttrMap * m = am[i];
 				if (strcmp(sa, (const char *)m->name) == 0)
 				{
+					copy_el_i++;
 					if (contains_character((char *)m->value, '"'))
 					{
 						char* res = doubleQuotes((const char* )m->value);
@@ -123,11 +133,8 @@ void SAX_startElementNs(void *ctx, const xmlChar *localname, const xmlChar *pref
 				}
 			} // for
 		}
-		else
-		{
-			sprintf(csv_row + strlen(csv_row), "\"%s\"", region_code);
-		}
 	}
+
 	pg_data_len = strlen(csv_row);
 	sprintf(csv_row + pg_data_len, "\n");
 	pg_position += pg_data_len;
@@ -231,7 +238,7 @@ int main(int argc, char *argv[])
 				region_code = optarg;
 				break;
 			case 'n':
-				region_attribute_i = atoi(optarg) - 1;
+				region_attribute_ordinal = atoi(optarg);
 				break;
 			case 'l':
 				log_file_addr = optarg;
