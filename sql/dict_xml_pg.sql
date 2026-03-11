@@ -76,7 +76,6 @@ COMMENT ON COLUMN xsd.pg_columns.transport_attribute IS 'Название атр
 -- формируются динамически из действующих словарей соответствия
 -- здесь приводится версия по умолчанию без исправлений
 create view xsd.program_call_parameters as
-
 with col_ord as (
 select table_catalog, table_schema, table_name,
        transport_attribute, root_node, singular_transport_node, pt.xml_file_prefix
@@ -87,14 +86,15 @@ select table_catalog, table_schema, table_name,
 order by table_catalog, table_schema, table_name, ordinal_position asc)
 select  table_name,
 		xml_file_prefix,
-		' -t ''"' || table_schema || '"."' || table_name || '"''' ||
-		case when region_attr_no is not null
-		     then ' -n ''' || region_attr_no::text || ''''
+		' -t ''"' || table_schema || '"."' || table_name || '"''' || -- Таблица
+		case when region_attr is not null -- № поля для заполнения кодов регионов
+		     then ' -n ''' || (select ordinal_position from information_schema."columns" c where c.table_catalog = o.table_catalog and c.table_schema = o.table_schema and c.table_name = o.table_name and c.column_name = region_attr )::text || ''''
 		     else ''
 		     end ||
-		' -a ''' || string_agg(transport_attribute, ',') || '''' ||
-		' -p ''' || root_node || '/' || singular_transport_node || ''' ' "bash"
-from col_ord
+		' -a ''' || string_agg(transport_attribute, ',') || '''' || -- Список востребуемых атрибутов XML
+		' -p ''' || root_node || '/' || singular_transport_node || ''' ' -- Адрес типового элемента, из которого происходит загрузка данных
+		"bash"
+from col_ord o
 group by table_catalog, table_schema, table_name, root_node, singular_transport_node, xml_file_prefix;
 
 -- Тестовый вывод получившихся словарей и параметров
