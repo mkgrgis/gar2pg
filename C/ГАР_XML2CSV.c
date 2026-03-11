@@ -23,6 +23,7 @@ static char**	selected_attributes = NULL;
 static char*	xpath_prefix = NULL;
 static char*	region_code = NULL;
 static int		region_attribute_ordinal = 0;
+static int		pgcopy_cortage_element_i = 0;
 // Счётчик числа обработанных кортежей
 size_t			cortage_count = 0;
 // Байтовый счётчик переноса в БД
@@ -32,7 +33,15 @@ char * xml_file_address = NULL;
 
 char*	log_file_addr = NULL;
 
-static char		csv_row[PG_COPY_BUFFER_SIZE];
+static char		pgcopy_cortage[PG_COPY_BUFFER_SIZE];
+
+inline static void pgcopy_cortage_add_value(const char * value)
+{
+	if (pgcopy_cortage_element_i > 0)
+		sprintf(pgcopy_cortage + strlen(pgcopy_cortage), "\t");
+	sprintf(pgcopy_cortage + strlen(pgcopy_cortage), "\"%s\"", value);
+	pgcopy_cortage_element_i++;
+}
 
 void SAX_startElementNs(void *ctx, const xmlChar *localname, const xmlChar *prefix, const xmlChar *URI, int nb_namespaces, const xmlChar **namespaces, int nb_attributes, int nb_defaulted, const xmlChar **attributes)
 {
@@ -91,55 +100,46 @@ void SAX_startElementNs(void *ctx, const xmlChar *localname, const xmlChar *pref
 
 	bool region_mode = (region_attribute_ordinal && region_code != NULL);
 	int att_i = 0;
-	int copy_el_i = 0;
+	pgcopy_cortage_element_i = 0;
+	pgcopy_cortage[0] = '\0';
 
-	csv_row[0] = '\0';
 	while (selected_attributes[att_i] != NULL)
 	{
 		const char * sa = selected_attributes[att_i];
-
 		att_i++;
-		// Разделитель печатается даже для не заполняемых атрибутов
-		if (att_i > 1)
-			sprintf(csv_row + strlen(csv_row), "\t");
+
+		if (region_mode && pgcopy_cortage_element_i == (region_attribute_ordinal - 1))
+			pgcopy_cortage_add_value(region_code);
+
 		// Если атрибут таблицы ничем не заполняется, в XML атрибуте ничего не указано, то просто пропустим его
 		if (sa[0] == '\0')
 			continue;
 
-		if (region_mode && copy_el_i == (region_attribute_ordinal - 1))
+		// Сравним названия нужного атрибута XML поставляющего данные в таблицу со всеми ранее запасёнными
+		for (int i = 0; i < nb_attributes; i++)
 		{
-			sprintf(csv_row + strlen(csv_row), "\"%s\"", region_code);
-			copy_el_i++;
-		}
-		else
-		{
-			// Сравним названия нужного атрибута XML поставляющего данные в таблицу со всеми ранее запасёнными
-			for (int i = 0; i < nb_attributes; i++)
+			AttrMap * m = am[i];
+			if (strcmp(sa, (const char *)m->name) == 0)
 			{
-				AttrMap * m = am[i];
-				if (strcmp(sa, (const char *)m->name) == 0)
+				if (contains_character((char *)m->value, '"'))
 				{
-					copy_el_i++;
-					if (contains_character((char *)m->value, '"'))
-					{
-						char* res = doubleQuotes((const char* )m->value);
-						sprintf(csv_row + strlen(csv_row), "\"%s\"", res);
-						free (res);
-					}
-					else
-					{
-						sprintf(csv_row + strlen(csv_row), "\"%s\"", m->value);
-					}
+					char* res = doubleQuotes((const char* )m->value);
+					pgcopy_cortage_add_value(res);
+					free (res);
 				}
-			} // for
-		}
+				else
+				{
+					pgcopy_cortage_add_value((const char *)m->value);
+				}
+			}
+		} // for
 	}
 
-	pg_data_len = strlen(csv_row);
-	sprintf(csv_row + pg_data_len, "\n");
+	pg_data_len = strlen(pgcopy_cortage);
+	sprintf(pgcopy_cortage + pg_data_len, "\n");
 	pg_position += pg_data_len;
 
-	pg_cortage_copy_send_row(context, csv_row);
+	pg_cortage_copy_send_row(context, pgcopy_cortage);
 
 	AttrMap_free (am, nb_attributes);
 
