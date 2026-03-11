@@ -194,7 +194,7 @@ void showhelp(char * name) {
 	printf("\t-i\tШаг печати информации о занесении кортежей, каждый кортеж по умолчанию\n");
 	printf("\t-l\tФайл для записи сообщений об ошибках SQL (лог ошибок поставляемых данных)\n");
 	printf("\t-r\tКод региона\n");
-	printf("\t-n\t№ атрибута для записи кода региона\n");
+	printf("\t-n\t№ атрибута для записи кода региона, ordinal_position из метаданных PostgreSQL, счёт с 1\n");
 	printf("\t-h\tПоказать эту справку\n\n");
 	printf("\t  \tПример:\n%s \\ \n -a 'ID,OBJECTID,OBJECTGUID,CHANGEID,HOUSENUM,ADDNUM2,ADDNUM1,HOUSETYPE,ADDTYPE1,ADDTYPE2,OPERTYPEID,PREVID,NEXTID,UPDATEDATE,STARTDATE,ENDDATE,ISACTUAL,ISACTIVE' \\ \n -t '\"public\".\"№ домов улиц населённых пунктов\"' \\\n -p 'HOUSES/HOUSE' \\\n -x 'Государственный адресный реестр/XML за 2026-01-29/AS_HOUSES_20251215_55004bba-fe23-4aeb-8eba-ebc086b8a94c.XML'", name);
 	printf("\n");
@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
 				region_code = optarg;
 				break;
 			case 'n':
-				region_attribute_i = atoi(optarg);
+				region_attribute_i = atoi(optarg) - 1;
 				break;
 			case 'l':
 				log_file_addr = optarg;

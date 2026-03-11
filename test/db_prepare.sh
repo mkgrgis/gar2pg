@@ -8,14 +8,6 @@ cat sql/xsd.sql | psql;
 # Пример запуска первой сессии загрузки метаданных, можно передать иной адре источника XSD чем по умолчанию из ФНС
 ./load_xsd.sh "$1";
 
-ddf='sql/ГАР_pgDDL.sql';
-echo "select '-- Атрибут региона: ' || set_config('ГАР.атрибут_региона', :'атрибут_региона', false) || '
-CREATE SCHEMA \"' || set_config('ГАР.схема', :'схема_разворачивания_ГАР', false) ||'\";'; select ddl from xsd.table_ddl;" | psql -Atq --set=схема_разворачивания_ГАР="$3" --set=БД="$2" --set=атрибут_региона="Регион" > "$ddf";
-# Прочитать сгенерированное
-echo "Автоматический скрипт, расшифровка загруженных XSD
-----------------------------------------------------------------------------"
-cat "$ddf";
-
 mkdir test/result;
 
 echo -n "ФАЙЛЫ ГАР  - ";
@@ -31,6 +23,16 @@ from xsd.transport_attributes;' | psql > test/result/xml_att.out;
 diff test/expected/xml_att.out test/result/xml_att.out > test/xml_att.diff;
 diff test/expected/xml_att.out test/result/xml_att.out || r="$?";
 echo "$r";
+
+echo "______________________________________________________________________"
+
+ddf='sql/ГАР_pgDDL.sql';
+echo "select '-- Атрибут региона: ' || set_config('ГАР.атрибут_региона', :'атрибут_региона', false) || '
+CREATE SCHEMA \"' || set_config('ГАР.схема', :'схема_разворачивания_ГАР', false) ||'\";'; select ddl from xsd.table_ddl;" | psql -Atq --set=схема_разворачивания_ГАР="$3" --set=БД="$2" --set=атрибут_региона="Регион" > "$ddf";
+# Прочитать сгенерированное
+echo "Автоматический скрипт, расшифровка загруженных XSD
+----------------------------------------------------------------------------"
+cat "$ddf";
 
 echo -n "DDL - "
 ddf='sql/ГАР_pgDDL.sql';
