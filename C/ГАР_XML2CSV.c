@@ -40,7 +40,8 @@ inline static void pgcopy_cortage_add_value(const char * value)
 {
 	if (pgcopy_cortage_element_i > 0)
 		sprintf(pgcopy_cortage + strlen(pgcopy_cortage), "\t");
-	sprintf(pgcopy_cortage + strlen(pgcopy_cortage), "\"%s\"", value);
+	if (value[0] != '\0')
+		sprintf(pgcopy_cortage + strlen(pgcopy_cortage), "\"%s\"", value);
 	pgcopy_cortage_element_i++;
 }
 
