@@ -1,23 +1,17 @@
 
 # $1 - URL для скачки архива с XSD публикуемых данных Государственного Адресного Реестра
-# $2 - название схемя для разворачивания принимающих таблиц
+# $2 - название БД для разворачивания принимающих таблиц
+# $3 - название схемы для разворачивания принимающих таблиц
 
 # Пример загрузки скрипта SQL создающего схему и струтуру для метаданных
 cat sql/xsd.sql | psql;
 # Пример запуска первой сессии загрузки метаданных, можно передать иной адре источника XSD чем по умолчанию из ФНС
 ./load_xsd.sh "$1";
 
-ddf='sql/ГАР_pgDDL.sql';
-echo "select 'CREATE SCHEMA \"' || set_config('ГАР.схема', '$2', false) ||'\";'; select ddl from xsd.table_ddl;" | psql -Atq > "$ddf";
-# Прочитать сгенерированное
-echo "Автоматический скрипт, расшифровка загруженных XSD
-----------------------------------------------------------------------------"
-cat "$ddf";
-
 mkdir test/result;
 
 echo -n "ФАЙЛЫ ГАР  - ";
-echo 'select "№", xsd_id, loading_session_id, xsd_filename, xml_file_prefix, table_name, root_node, singular_transport_node, xsd_descr_general, xsd_descr_singular
+echo 'select "№", xsd_id, loading_session_id, xsd_filename, xml_file_prefix, table_name, root_node, singular_transport_node, xsd_descr_general, xsd_descr_singular, region_partitions
 from xsd.transport_files;' | psql > test/result/xml_files.out;
 diff test/expected/xml_files.out test/result/xml_files.out > test/xml_files.diff;
 diff test/expected/xml_files.out test/result/xml_files.out || r="$?";
@@ -30,6 +24,16 @@ diff test/expected/xml_att.out test/result/xml_att.out > test/xml_att.diff;
 diff test/expected/xml_att.out test/result/xml_att.out || r="$?";
 echo "$r";
 
+echo "______________________________________________________________________"
+
+ddf='sql/ГАР_pgDDL.sql';
+echo "select '-- Атрибут региона: ' || set_config('ГАР.атрибут_региона', :'атрибут_региона', false) || '
+CREATE SCHEMA \"' || set_config('ГАР.схема', :'схема_разворачивания_ГАР', false) ||'\";'; select ddl from xsd.table_ddl;" | psql -Atq --set=схема_разворачивания_ГАР="$3" --set=БД="$2" --set=атрибут_региона="Регион" > "$ddf";
+# Прочитать сгенерированное
+echo "Автоматический скрипт, расшифровка загруженных XSD
+----------------------------------------------------------------------------"
+cat "$ddf";
+
 echo -n "DDL - "
 ddf='sql/ГАР_pgDDL.sql';
 cat "$ddf" | psql -e > test/result/ddl.out || true;
@@ -39,7 +43,7 @@ echo "$r";
 
 echo -n "Сопоставление словарей PostgreSQL и xsd - "
 dct='sql/dict_xml_pg.sql';
-cat "$dct" | psql --set=схема_разворачивания_ГАР="$2" -e > test/result/dict_xml_pg.out || true;
+cat "$dct" | psql --set=схема_разворачивания_ГАР="$3" --set=БД="$2" --set=атрибут_региона="Регион" -e > test/result/dict_xml_pg.out || true;
 diff test/expected/dict_xml_pg.out test/result/dict_xml_pg.out > test/dict_xml_pg.diff;
 diff test/expected/dict_xml_pg.out test/result/dict_xml_pg.out || r="$?";
 echo "$r";

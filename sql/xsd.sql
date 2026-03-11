@@ -22,10 +22,12 @@ xml $$
 <row>
   <xml_file_prefix>ADDR_OBJ</xml_file_prefix>
   <table_name>Адресообразующие элементы</table_name>
+  <region_partition>1</region_partition>
 </row>
 <row>
   <xml_file_prefix>ADDR_OBJ_DIVISION</xml_file_prefix>
   <table_name>Операции переподчинения</table_name>
+  <region_partition>1</region_partition>
 </row>
 <row>
   <xml_file_prefix>ADDR_OBJ_TYPES</xml_file_prefix>
@@ -34,10 +36,12 @@ xml $$
 <row>
   <xml_file_prefix>ADM_HIERARCHY</xml_file_prefix>
   <table_name>Иерархия административная</table_name>
+  <region_partition>1</region_partition>
 </row>
 <row>
   <xml_file_prefix>APARTMENTS</xml_file_prefix>
   <table_name>Помещения</table_name>
+  <region_partition>1</region_partition>
 </row>
 <row>
   <xml_file_prefix>APARTMENT_TYPES</xml_file_prefix>
@@ -46,14 +50,17 @@ xml $$
 <row>
   <xml_file_prefix>CARPLACES</xml_file_prefix>
   <table_name>Машино-места</table_name>
+  <region_partition>1</region_partition>
 </row>
 <row>
   <xml_file_prefix>CHANGE_HISTORY</xml_file_prefix>
   <table_name>История изменений</table_name>
+  <region_partition>1</region_partition>
 </row>
 <row>
   <xml_file_prefix>HOUSES</xml_file_prefix>
   <table_name>№ домов улиц населённых пунктов</table_name>
+  <region_partition>1</region_partition>
 </row>
 <row>
   <xml_file_prefix>HOUSE_TYPES</xml_file_prefix>
@@ -62,10 +69,12 @@ xml $$
 <row>
   <xml_file_prefix>MUN_HIERARCHY</xml_file_prefix>
   <table_name>Иерархия муниципальная</table_name>
+  <region_partition>1</region_partition>
 </row>
 <row>
   <xml_file_prefix>NORMATIVE_DOCS</xml_file_prefix>
   <table_name>Документы обоснования адресации</table_name>
+  <region_partition>1</region_partition>
 </row>
 <row>
   <xml_file_prefix>NORMATIVE_DOCS_KINDS</xml_file_prefix>
@@ -94,10 +103,12 @@ xml $$
 <row>
   <xml_file_prefix>REESTR_OBJECTS</xml_file_prefix>
   <table_name>Коды адресных элементов</table_name>
+  <region_partition>1</region_partition>
 </row>
 <row>
   <xml_file_prefix>ROOMS</xml_file_prefix>
   <table_name>Комнаты</table_name>
+  <region_partition>1</region_partition>
 </row>
 <row>
   <xml_file_prefix>ROOM_TYPES</xml_file_prefix>
@@ -106,31 +117,37 @@ xml $$
 <row>
   <xml_file_prefix>STEADS</xml_file_prefix>
   <table_name>Земельные участки</table_name>
+  <region_partition>1</region_partition>
 </row>
 <row>
   <xml_file_prefix>STEADS_PARAMS</xml_file_prefix>
   <table_name>Параметры земельных участков</table_name>
   <xsd_file_pefix>PARAM</xsd_file_pefix>
+  <region_partition>1</region_partition>
 </row>
 <row>
   <xml_file_prefix>HOUSES_PARAMS</xml_file_prefix>
   <table_name>Параметры домов</table_name>
-  <xsd_file_pefix>PARAM</xsd_file_pefix>  
+  <xsd_file_pefix>PARAM</xsd_file_pefix>
+  <region_partition>1</region_partition>
 </row>
 <row>
   <xml_file_prefix>ROOMS_PARAMS</xml_file_prefix>
   <table_name>Параметры помещений</table_name>
-  <xsd_file_pefix>PARAM</xsd_file_pefix>  
+  <xsd_file_pefix>PARAM</xsd_file_pefix>
+  <region_partition>1</region_partition>
 </row>
 <row>
   <xml_file_prefix>CARPLACES_PARAMS</xml_file_prefix>
   <table_name>Параметры машиномест</table_name>
-  <xsd_file_pefix>PARAM</xsd_file_pefix>  
+  <xsd_file_pefix>PARAM</xsd_file_pefix>
+  <region_partition>1</region_partition>
 </row>
 <row>
   <xml_file_prefix>ADDR_OBJ_PARAMS</xml_file_prefix>
   <table_name>Параметры адресных объектов</table_name>
   <xsd_file_pefix>PARAM</xsd_file_pefix>
+  <region_partition>1</region_partition>
 </row>
 <row>
   <xml_file_prefix>ADDHOUSE_TYPES</xml_file_prefix>
@@ -141,6 +158,7 @@ xml $$
   <xml_file_prefix>APARTMENTS_PARAMS</xml_file_prefix>
   <table_name>Параметры квартир</table_name>
   <xsd_file_pefix>PARAM</xsd_file_pefix>
+  <region_partition>1</region_partition>
 </row>
 </table_names>
 $$ as data
@@ -150,12 +168,14 @@ select xmlt.* from base, xmltable ('table_names/row'
                 PASSING data
                 COLUMNS xml_file_prefix text PATH 'xml_file_prefix',
                         table_name text PATH 'table_name',
-                        xsd_file_pefix text PATH 'xsd_file_pefix'
+                        xsd_file_pefix text PATH 'xsd_file_pefix',
+                        region_partitions bool PATH 'region_partition'
                         ) xmlt
 )
 select xml_file_prefix,
        table_name,
-       coalesce (xsd_file_pefix, xml_file_prefix) xsd_file_pefix
+       coalesce(xsd_file_pefix, xml_file_prefix) xsd_file_pefix,
+       coalesce(region_partitions, 0::bool) region_partitions
   from base_table;
 
 create view xsd.transport_xsd as
@@ -184,6 +204,7 @@ select row_number() over () "№",
        loading_session_id,
        tstamp,
        xsd_filename,
+       region_partitions,
        coalesce(t.xml_file_prefix, tx.xml_file_prefix) xml_file_prefix,
        table_name,
        root_node,
@@ -351,7 +372,11 @@ select root_node, xsd_filename, xml_file_prefix, array_to_string(array_agg("ddl"
  select xsd_filename, xsd_id,
         '-- ' || xsd_filename || '
 CREATE TABLE "' || coalesce(current_setting('ГАР.схема', true), 'public') || '"."' || table_name || '" (
-' || ddl || '
+' || case when region_partitions and length(current_setting('ГАР.атрибут_региона', true)) > 0
+	 then '  "' || current_setting('ГАР.атрибут_региона', true) || '" int2 not null,
+'
+	 else '' end ||
+	ddl || '
 );' ddl
    from att 
    full join xsd.transport_files
