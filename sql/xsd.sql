@@ -373,7 +373,7 @@ select root_node, xsd_filename, xml_file_prefix, array_to_string(array_agg("ddl"
         '-- ' || xsd_filename || '
 CREATE TABLE "' || coalesce(current_setting('ГАР.схема', true), 'public') || '"."' || table_name || '" (
 ' || case when region_partitions and length(current_setting('ГАР.атрибут_региона', true)) > 0
-	 then ' "' || current_setting('ГАР.атрибут_региона', true) || '" int2 not null,
+	 then '  "' || current_setting('ГАР.атрибут_региона', true) || '" int2 not null,
 '
 	 else '' end ||
 	ddl || '
