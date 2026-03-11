@@ -10,7 +10,7 @@ create table xsd.pg_tables as
 with t as (
 select *
   from information_schema."tables" t
- where t.table_catalog = 'Государственный адресный реестр'
+ where t.table_catalog = :'БД'
    and t.table_schema = :'схема_разворачивания_ГАР'
 )   
 select table_catalog,
@@ -20,7 +20,8 @@ select table_catalog,
        tf.xsd_filename,
        tf.root_node,
        tf.singular_transport_node,
-       tf.xsd_descr_singular
+       tf.xsd_descr_singular,
+       case when tf.region_partition then :'атрибут_региона' else null end region_attr
   from t
   full join xsd.transport_files tf
  using (table_name);
@@ -36,6 +37,7 @@ COMMENT ON COLUMN xsd.pg_tables.xsd_filename IS 'Название XSD файла
 COMMENT ON COLUMN xsd.pg_tables.root_node IS 'Название корневого узла трансопртного XML файла ГАР';
 COMMENT ON COLUMN xsd.pg_tables.singular_transport_node IS 'Название типового узла трансопртного XML файла ГАР';
 COMMENT ON COLUMN xsd.pg_tables.xsd_descr_singular IS 'Описание смыслового содержания XSD';
+COMMENT ON COLUMN xsd.pg_tables.region_attr IS 'Название атрибута таблицы для записи кода региона, если данные нужно делить по регионам';
 
 -- Сотнесение колонок таблиц в выбранной схеме с эталонной структурой ГАР
 -- Создание таблицы переноса значений XML атрибутов в колонки
@@ -43,7 +45,7 @@ create table xsd.pg_columns as
 with c as (
 select *
   from information_schema."columns" c
- where c.table_catalog = 'Государственный адресный реестр'
+ where c.table_catalog = :'БД'
    and c.table_schema = :'схема_разворачивания_ГАР'
    )
 select table_catalog,
@@ -51,7 +53,7 @@ select table_catalog,
        table_name,
        column_name,
        ordinal_position,
-       transport_attribute       
+       transport_attribute
   from c
   full join xsd.transport_attributes ta
  using (table_name, column_name);
@@ -83,11 +85,15 @@ select table_catalog, table_schema, table_name,
  using (table_catalog, table_schema, table_name)  
   --where pc.xml_file_prefix ~ '^PARAM.*'
 order by table_catalog, table_schema, table_name, ordinal_position asc)
-select table_name,
-       xml_file_prefix, 
-       ' -t ''"' || table_schema || '"."' || table_name || '"''' ||
-       ' -a ''' || string_agg(transport_attribute, ',') || '''' ||       
-       ' -p ''' || root_node || '/' || singular_transport_node || ''' ' "bash"       
+select  table_name,
+		xml_file_prefix,
+		' -t ''"' || table_schema || '"."' || table_name || '"''' ||
+		case when region_attr_no is not null
+		     then ' -n ''' || region_attr_no::text || ''''
+		     else ''
+		     end ||
+		' -a ''' || string_agg(transport_attribute, ',') || '''' ||
+		' -p ''' || root_node || '/' || singular_transport_node || ''' ' "bash"
 from col_ord
 group by table_catalog, table_schema, table_name, root_node, singular_transport_node, xml_file_prefix;
 
