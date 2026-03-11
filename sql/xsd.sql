@@ -371,7 +371,11 @@ select root_node, xsd_filename, xml_file_prefix, array_to_string(array_agg("ddl"
  select xsd_filename, xsd_id,
         '-- ' || xsd_filename || '
 CREATE TABLE "' || coalesce(current_setting('ГАР.схема', true), 'public') || '"."' || table_name || '" (
-' || ddl || '
+' || case when region_partitions and length(current_setting('ГАР.атрибут_регионов', true)) > 0, false)
+	 then ' "' || current_setting('ГАР.атрибут_регионов', true) || '" int2 not null,
+'
+	 else '' end ||
+	ddl || '
 );' ddl
    from att 
    full join xsd.transport_files
