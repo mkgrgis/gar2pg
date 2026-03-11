@@ -78,7 +78,7 @@ COMMENT ON COLUMN xsd.pg_columns.transport_attribute IS 'Название атр
 create view xsd.program_call_parameters as
 with col_ord as (
 select table_catalog, table_schema, table_name,
-       transport_attribute, root_node, singular_transport_node, pt.xml_file_prefix
+       transport_attribute, root_node, singular_transport_node, pt.xml_file_prefix, pt.region_attr
   from xsd.pg_columns pc
  inner join xsd.pg_tables pt
  using (table_catalog, table_schema, table_name)  
