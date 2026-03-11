@@ -21,7 +21,7 @@ select table_catalog,
        tf.root_node,
        tf.singular_transport_node,
        tf.xsd_descr_singular,
-       case when tf.region_partition then :'атрибут_региона' else null end region_attr
+       case when tf.region_partitions then :'атрибут_региона' else null end region_attr
   from t
   full join xsd.transport_files tf
  using (table_name);
