@@ -29,9 +29,10 @@ size_t			cortage_count = 0;
 // Байтовый счётчик переноса в БД
 size_t			pg_position = 0;
 static int		info_cortage_step = 0;
-char * xml_file_address = NULL;
+char*			xml_file_address = NULL;
 
-char*	log_file_addr = NULL;
+char*			log_file_addr = NULL;
+bool			debug_data = false;
 
 static char		pgcopy_cortage[PG_COPY_BUFFER_SIZE];
 
@@ -105,21 +106,26 @@ void SAX_startElementNs(void *ctx, const xmlChar *localname, const xmlChar *pref
 
 	while (selected_attributes[att_i] != NULL)
 	{
-		const char * sa = selected_attributes[att_i];
+		const char * atribute_name = selected_attributes[att_i];
+		bool no_value = true;
 		att_i++;
 
 		if (region_mode && pgcopy_cortage_element_i == (region_attribute_ordinal - 1))
 			pgcopy_cortage_add_value(region_code);
 
 		// Если атрибут таблицы ничем не заполняется, в XML атрибуте ничего не указано, то просто пропустим его
-		if (sa[0] == '\0')
+		if (atribute_name[0] == '\0')
+		{
+			pgcopy_cortage_add_value("");
 			continue;
+		}
 
+		no_value = true;
 		// Сравним названия нужного атрибута XML поставляющего данные в таблицу со всеми ранее запасёнными
 		for (int i = 0; i < nb_attributes; i++)
 		{
 			AttrMap * m = am[i];
-			if (strcmp(sa, (const char *)m->name) == 0)
+			if (strcmp(atribute_name, (const char *)m->name) == 0)
 			{
 				if (contains_character((char *)m->value, '"'))
 				{
@@ -131,14 +137,19 @@ void SAX_startElementNs(void *ctx, const xmlChar *localname, const xmlChar *pref
 				{
 					pgcopy_cortage_add_value((const char *)m->value);
 				}
+				no_value = false;
 			}
 		} // for
+		if (no_value)
+			pgcopy_cortage_add_value("");
 	}
 
 	pg_data_len = strlen(pgcopy_cortage);
 	sprintf(pgcopy_cortage + pg_data_len, "\n");
 	pg_position += pg_data_len;
 
+	if (debug_data)
+		printf("pgcp: %s", pgcopy_cortage);
 	pg_cortage_copy_send_row(context, pgcopy_cortage);
 
 	AttrMap_free (am, nb_attributes);
@@ -202,6 +213,7 @@ void showhelp(char * name) {
 	printf("\t-l\tФайл для записи сообщений об ошибках SQL (лог ошибок поставляемых данных)\n");
 	printf("\t-r\tКод региона\n");
 	printf("\t-n\t№ атрибута для записи кода региона, ordinal_position из метаданных PostgreSQL, счёт с 1\n");
+	printf("\t-d\tВключить вывод отладки переносимых данных\n");
 	printf("\t-h\tПоказать эту справку\n\n");
 	printf("\t  \tПример:\n%s \\ \n -a 'ID,OBJECTID,OBJECTGUID,CHANGEID,HOUSENUM,ADDNUM2,ADDNUM1,HOUSETYPE,ADDTYPE1,ADDTYPE2,OPERTYPEID,PREVID,NEXTID,UPDATEDATE,STARTDATE,ENDDATE,ISACTUAL,ISACTIVE' \\ \n -t '\"public\".\"№ домов улиц населённых пунктов\"' \\\n -p 'HOUSES/HOUSE' \\\n -x 'Государственный адресный реестр/XML за 2026-01-29/AS_HOUSES_20251215_55004bba-fe23-4aeb-8eba-ebc086b8a94c.XML'", name);
 	printf("\n");
@@ -213,7 +225,7 @@ int main(int argc, char *argv[])
 	char c;
 	struct stat xmlStat;
 
-	while ((c = getopt (argc, argv, "ha:p:x:t:i:l:r:n:")) != -1)
+	while ((c = getopt (argc, argv, "ha:p:x:t:i:l:r:n:d")) != -1)
 	{
 		switch (c) {
 			case 'h':
@@ -242,6 +254,9 @@ int main(int argc, char *argv[])
 				break;
 			case 'l':
 				log_file_addr = optarg;
+				break;
+			case 'd':
+				debug_data = true;
 				break;
 			default:
 				break;
