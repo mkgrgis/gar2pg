@@ -36,7 +36,7 @@ jobs:
         run: bash test/db_init.sh '${{ env.PGDATABASE }}' '${{ env.PGUSER }}' '${{ env.PGPASSWORD }}';
 
       - name: Загрузка метаданных ГАР XSD
-        run: bash test/db_prepare.sh https://web.archive.org/web/20250921151758/https://fias.nalog.ru/docs/gar_schemas.zip ${{ env.test_schema }};
+        run: bash test/db_prepare.sh https://web.archive.org/web/20250921151758/https://fias.nalog.ru/docs/gar_schemas.zip '${{ env.PGDATABASE }}' ${{ env.test_schema }};
 
       - name: Компиляция утилиты
         run: (cd C; make all;)
