@@ -15,5 +15,6 @@ echo -e "Загрузка данных XML Государственного Ад
    регион           :\x1b[33m'$reg_code'\x1b[39m
    файла            :\x1b[33m'$absolute_path'\x1b[39m
 XML ГАР -> PostgreSQL ... ";
-sh -c "./гар_xml2pg -x '$1' $tpar -l ГАР_SQL.log";
+if [ ! -z "$reg_code" ] && reg_code="-r $reg_code""
+sh -c "./гар_xml2pg -x '$1' $tpar -l ГАР_SQL.log $reg_code";
 echo -e "____________________________________________";
