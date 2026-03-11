@@ -95,7 +95,7 @@ select  table_name,
 		' -p ''' || root_node || '/' || singular_transport_node || ''' ' -- Адрес типового элемента, из которого происходит загрузка данных
 		"bash"
 from col_ord o
-group by table_catalog, table_schema, table_name, root_node, singular_transport_node, xml_file_prefix;
+group by table_catalog, table_schema, table_name, root_node, singular_transport_node, xml_file_prefix, region_attr;
 
 -- Тестовый вывод получившихся словарей и параметров
 select * from xsd.pg_tables;
